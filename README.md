@@ -6,6 +6,7 @@ A deployable static web application that lets a user upload a resume, calculate 
 
 - Browser-only resume analysis for privacy.
 - PDF and plain-text resume parsing.
+- Downloads preserve the uploaded format: PDF uploads export PDF, text uploads export TXT.
 - Optional job description matching for keyword alignment.
 - ATS score across parseability, keyword match, impact signals, and missing basics.
 - Prioritized format and content recommendations.
@@ -25,7 +26,7 @@ Then visit `http://localhost:4173`.
 
 This is a static app. Deploy the `ats-resume-checker` folder to Netlify, Vercel, GitHub Pages, Cloudflare Pages, or any static host.
 
-No backend is required. PDF parsing and icons are loaded from CDNs, so the deployed app needs internet access.
+No backend is required. PDF parsing, PDF export, and icons load from CDNs, so the deployed app needs internet access.
 
 ## Notes
 

@@ -72,6 +72,7 @@ Requirements:
 
 let currentResumeText = "";
 let currentFileName = "resume";
+let currentFileExtension = "txt";
 
 window.addEventListener("DOMContentLoaded", () => {
   if (window.lucide) {
@@ -117,6 +118,7 @@ sampleJobButton.addEventListener("click", () => {
 resetButton.addEventListener("click", () => {
   currentResumeText = "";
   currentFileName = "resume";
+  currentFileExtension = "txt";
   resumeInput.value = "";
   jobDescription.value = "";
   resumeDraft.value = "";
@@ -130,18 +132,30 @@ resetButton.addEventListener("click", () => {
   missingMetric.textContent = "--";
 });
 
-downloadButton.addEventListener("click", () => {
+downloadButton.addEventListener("click", async () => {
   const content = resumeDraft.value.trim();
   if (!content) return;
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${slugify(currentFileName)}-ats-friendly.txt`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadButton.disabled = true;
+  const originalLabel = downloadButton.innerHTML;
+  downloadButton.innerHTML = '<i data-lucide="loader"></i>Preparing';
+  if (window.lucide) window.lucide.createIcons();
+
+  try {
+    const output = currentFileExtension === "pdf" ? await buildPdfBlob(content) : buildTextBlob(content);
+    const { blob, extension } = output;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${slugify(currentFileName)}-ats-friendly.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } finally {
+    downloadButton.disabled = false;
+    downloadButton.innerHTML = originalLabel;
+    if (window.lucide) window.lucide.createIcons();
+  }
 });
 
 copyButton.addEventListener("click", async () => {
@@ -157,12 +171,13 @@ copyButton.addEventListener("click", async () => {
 
 async function analyzeFile(file) {
   currentFileName = file.name.replace(/\.[^.]+$/, "");
+  currentFileExtension = file.name.split(".").pop().toLowerCase();
   fileStatus.textContent = `Reading ${file.name}...`;
 
   try {
     const text = await extractText(file);
     currentResumeText = text;
-    fileStatus.textContent = `${file.name} parsed (${text.split(/\s+/).filter(Boolean).length} words)`;
+    fileStatus.textContent = `${file.name} parsed (${text.split(/\s+/).filter(Boolean).length} words). Download: ${currentFileExtension.toUpperCase()}`;
     analyzeText(text);
   } catch (error) {
     fileStatus.textContent = "Could not parse this file. Try exporting as PDF or .txt.";
@@ -187,6 +202,79 @@ async function extractText(file) {
     return extractPdfText(file);
   }
   throw new Error("Unsupported file type");
+}
+
+function buildTextBlob(content) {
+  return {
+    blob: new Blob([content], { type: "text/plain;charset=utf-8" }),
+    extension: "txt",
+  };
+}
+
+async function buildPdfBlob(content) {
+  const { PDFDocument, StandardFonts, rgb } = await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm");
+  const pdfDoc = await PDFDocument.create();
+  const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const pageSize = { width: 612, height: 792 };
+  const margin = 54;
+  const fontSize = 10.5;
+  const headingSize = 12;
+  const lineHeight = 15;
+  let page = pdfDoc.addPage([pageSize.width, pageSize.height]);
+  let y = pageSize.height - margin;
+
+  const drawLine = (line, options = {}) => {
+    if (y < margin) {
+      page = pdfDoc.addPage([pageSize.width, pageSize.height]);
+      y = pageSize.height - margin;
+    }
+    const isHeading = /^[A-Z][A-Z\s]+$/.test(line) && line.length < 42;
+    page.drawText(line, {
+      x: margin,
+      y,
+      size: isHeading ? headingSize : fontSize,
+      font: isHeading || options.bold ? boldFont : regularFont,
+      color: rgb(0.08, 0.1, 0.08),
+    });
+    y -= isHeading ? lineHeight + 3 : lineHeight;
+  };
+
+  content.split("\n").forEach((rawLine) => {
+    const line = rawLine.trim();
+    if (!line) {
+      y -= lineHeight * 0.55;
+      return;
+    }
+    wrapText(line, regularFont, fontSize, pageSize.width - margin * 2).forEach((wrappedLine, index) => {
+      drawLine(index === 0 ? wrappedLine : `  ${wrappedLine}`);
+    });
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  return {
+    blob: new Blob([pdfBytes], { type: "application/pdf" }),
+    extension: "pdf",
+  };
+}
+
+function wrapText(text, font, size, maxWidth) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let currentLine = "";
+
+  words.forEach((word) => {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    if (font.widthOfTextAtSize(testLine, size) <= maxWidth) {
+      currentLine = testLine;
+      return;
+    }
+    if (currentLine) lines.push(currentLine);
+    currentLine = word;
+  });
+
+  if (currentLine) lines.push(currentLine);
+  return lines;
 }
 
 async function extractPdfText(file) {
