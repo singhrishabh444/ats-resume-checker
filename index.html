@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ResumeFit ATS Checker</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="rail" aria-label="ResumeFit status">
+        <div class="brand">
+          <div class="brand-mark">RF</div>
+          <div>
+            <p>ResumeFit</p>
+            <h1>ATS resume checker</h1>
+          </div>
+        </div>
+
+        <section class="score-card" aria-live="polite">
+          <div class="score-ring" id="scoreRing" style="--score: 0">
+            <span id="scoreValue">--</span>
+          </div>
+          <div>
+            <p class="label">ATS readiness</p>
+            <strong id="scoreLabel">Upload a resume</strong>
+          </div>
+        </section>
+
+        <nav class="rail-nav">
+          <a href="#uploadPanel"><i data-lucide="upload"></i><span>Upload</span></a>
+          <a href="#analysisPanel"><i data-lucide="scan-line"></i><span>Analysis</span></a>
+          <a href="#recommendationsPanel"><i data-lucide="list-checks"></i><span>Recommendations</span></a>
+          <a href="#downloadPanel"><i data-lucide="download"></i><span>Download</span></a>
+        </nav>
+
+        <section class="rail-note">
+          <p class="label">Privacy</p>
+          <p>Your resume is analyzed in this browser. No upload server is required for the static version.</p>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Client-side deployable web app</p>
+            <h2>Turn any resume into an <span>ATS-ready</span> application draft.</h2>
+            <p class="topbar-copy">Score parseability, keyword fit, and recruiter scan quality before you apply.</p>
+          </div>
+          <div class="topbar-actions">
+            <div class="hero-stat">
+              <strong>Local</strong>
+              <small>Browser analysis</small>
+            </div>
+            <button class="icon-button" id="resetButton" type="button" title="Reset" aria-label="Reset analysis">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+          </div>
+        </header>
+
+        <section class="upload-panel" id="uploadPanel">
+          <div class="dropzone" id="dropzone">
+            <input id="resumeInput" type="file" accept=".pdf,.txt,.text" />
+            <div class="drop-icon"><i data-lucide="file-up"></i></div>
+            <h3>Drop a PDF or text resume</h3>
+            <p>PDF parsing uses PDF.js in the browser. Text files work everywhere.</p>
+            <button class="primary-button" id="chooseFileButton" type="button">
+              <i data-lucide="folder-open"></i>
+              Choose resume
+            </button>
+            <span id="fileStatus">No file selected</span>
+          </div>
+
+          <div class="job-box">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Optional</p>
+                <h3>Target job description</h3>
+              </div>
+              <button class="ghost-button" id="sampleJobButton" type="button">Use sample</button>
+            </div>
+            <textarea id="jobDescription" placeholder="Paste a job description to score keyword alignment and tailoring opportunities."></textarea>
+          </div>
+        </section>
+
+        <section class="summary-grid" id="analysisPanel">
+          <article class="metric">
+            <p>Parseability</p>
+            <strong id="parseMetric">--</strong>
+            <span>Format, sections, contact info</span>
+          </article>
+          <article class="metric">
+            <p>Keyword match</p>
+            <strong id="keywordMetric">--</strong>
+            <span>Compared with the job description</span>
+          </article>
+          <article class="metric">
+            <p>Impact signals</p>
+            <strong id="impactMetric">--</strong>
+            <span>Metrics, verbs, bullet strength</span>
+          </article>
+          <article class="metric">
+            <p>Missing basics</p>
+            <strong id="missingMetric">--</strong>
+            <span>Required resume ingredients</span>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <section class="panel" id="recommendationsPanel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Prioritized</p>
+                <h3>Recommendations</h3>
+              </div>
+              <span class="pill" id="issueCount">0 issues</span>
+            </div>
+            <div class="recommendation-list" id="recommendationList">
+              <div class="empty-state">
+                <i data-lucide="file-search"></i>
+                <p>Upload a resume to see format, content, and keyword recommendations.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Found in resume</p>
+                <h3>Resume signals</h3>
+              </div>
+            </div>
+            <div class="signal-list" id="signalList"></div>
+          </section>
+        </section>
+
+        <section class="panel editor-panel" id="downloadPanel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Generated from extracted text</p>
+              <h3>ATS-friendly resume draft</h3>
+            </div>
+            <div class="button-row">
+              <button class="ghost-button" id="copyButton" type="button">
+                <i data-lucide="copy"></i>
+                Copy
+              </button>
+              <button class="primary-button" id="downloadButton" type="button">
+                <i data-lucide="download"></i>
+                Download
+              </button>
+            </div>
+          </div>
+          <textarea id="resumeDraft" placeholder="Your cleaned ATS-friendly resume draft will appear here after analysis. You can edit it before downloading."></textarea>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
