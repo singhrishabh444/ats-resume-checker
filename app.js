@@ -73,6 +73,7 @@ Requirements:
 let currentResumeText = "";
 let currentFileName = "resume";
 let currentFileExtension = "txt";
+let currentOriginalFile = null;
 
 window.addEventListener("DOMContentLoaded", () => {
   if (window.lucide) {
@@ -119,6 +120,7 @@ resetButton.addEventListener("click", () => {
   currentResumeText = "";
   currentFileName = "resume";
   currentFileExtension = "txt";
+  currentOriginalFile = null;
   resumeInput.value = "";
   jobDescription.value = "";
   resumeDraft.value = "";
@@ -130,6 +132,7 @@ resetButton.addEventListener("click", () => {
   keywordMetric.textContent = "--";
   impactMetric.textContent = "--";
   missingMetric.textContent = "--";
+  setDownloadLabel();
 });
 
 downloadButton.addEventListener("click", async () => {
@@ -141,7 +144,7 @@ downloadButton.addEventListener("click", async () => {
   if (window.lucide) window.lucide.createIcons();
 
   try {
-    const output = currentFileExtension === "pdf" ? await buildPdfBlob(content) : buildTextBlob(content);
+    const output = currentFileExtension === "pdf" && currentOriginalFile ? buildOriginalFileBlob() : buildTextBlob(content);
     const { blob, extension } = output;
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -172,12 +175,17 @@ copyButton.addEventListener("click", async () => {
 async function analyzeFile(file) {
   currentFileName = file.name.replace(/\.[^.]+$/, "");
   currentFileExtension = file.name.split(".").pop().toLowerCase();
+  currentOriginalFile = file;
   fileStatus.textContent = `Reading ${file.name}...`;
 
   try {
     const text = await extractText(file);
     currentResumeText = text;
-    fileStatus.textContent = `${file.name} parsed (${text.split(/\s+/).filter(Boolean).length} words). Download: ${currentFileExtension.toUpperCase()}`;
+    fileStatus.textContent =
+      currentFileExtension === "pdf"
+        ? `${file.name} parsed (${text.split(/\s+/).filter(Boolean).length} words). Download keeps original PDF layout.`
+        : `${file.name} parsed (${text.split(/\s+/).filter(Boolean).length} words). Download: TXT`;
+    setDownloadLabel();
     analyzeText(text);
   } catch (error) {
     fileStatus.textContent = "Could not parse this file. Try exporting as PDF or .txt.";
@@ -211,70 +219,17 @@ function buildTextBlob(content) {
   };
 }
 
-async function buildPdfBlob(content) {
-  const { PDFDocument, StandardFonts, rgb } = await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm");
-  const pdfDoc = await PDFDocument.create();
-  const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const pageSize = { width: 612, height: 792 };
-  const margin = 54;
-  const fontSize = 10.5;
-  const headingSize = 12;
-  const lineHeight = 15;
-  let page = pdfDoc.addPage([pageSize.width, pageSize.height]);
-  let y = pageSize.height - margin;
-
-  const drawLine = (line, options = {}) => {
-    if (y < margin) {
-      page = pdfDoc.addPage([pageSize.width, pageSize.height]);
-      y = pageSize.height - margin;
-    }
-    const isHeading = /^[A-Z][A-Z\s]+$/.test(line) && line.length < 42;
-    page.drawText(line, {
-      x: margin,
-      y,
-      size: isHeading ? headingSize : fontSize,
-      font: isHeading || options.bold ? boldFont : regularFont,
-      color: rgb(0.08, 0.1, 0.08),
-    });
-    y -= isHeading ? lineHeight + 3 : lineHeight;
-  };
-
-  content.split("\n").forEach((rawLine) => {
-    const line = rawLine.trim();
-    if (!line) {
-      y -= lineHeight * 0.55;
-      return;
-    }
-    wrapText(line, regularFont, fontSize, pageSize.width - margin * 2).forEach((wrappedLine, index) => {
-      drawLine(index === 0 ? wrappedLine : `  ${wrappedLine}`);
-    });
-  });
-
-  const pdfBytes = await pdfDoc.save();
+function buildOriginalFileBlob() {
   return {
-    blob: new Blob([pdfBytes], { type: "application/pdf" }),
-    extension: "pdf",
+    blob: currentOriginalFile,
+    extension: currentFileExtension,
   };
 }
 
-function wrapText(text, font, size, maxWidth) {
-  const words = text.split(/\s+/);
-  const lines = [];
-  let currentLine = "";
-
-  words.forEach((word) => {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    if (font.widthOfTextAtSize(testLine, size) <= maxWidth) {
-      currentLine = testLine;
-      return;
-    }
-    if (currentLine) lines.push(currentLine);
-    currentLine = word;
-  });
-
-  if (currentLine) lines.push(currentLine);
-  return lines;
+function setDownloadLabel() {
+  const label = currentFileExtension === "pdf" ? "Download original PDF" : "Download";
+  downloadButton.innerHTML = `<i data-lucide="download"></i>${label}`;
+  if (window.lucide) window.lucide.createIcons();
 }
 
 async function extractPdfText(file) {
